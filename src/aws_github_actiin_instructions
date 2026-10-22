@@ -1,0 +1,126 @@
+
+Manual process
+
+1. add a change in the app.tsx
+2. crete a branch and merge the PR
+3. open wsl and connect to the instance
+    dell@DESKTOP-PM4Q7OS:/mnt/c/Users/DELL$ cd ../
+    dell@DESKTOP-PM4Q7OS:/mnt/c/Users$ cd ../
+    dell@DESKTOP-PM4Q7OS:/mnt/c$ cd ~
+    dell@DESKTOP-PM4Q7OS:~$ pwd
+    /home/dell
+    dell@DESKTOP-PM4Q7OS:~$ cd test_server_sec_key/
+    dell@DESKTOP-PM4Q7OS:~/test_server_sec_key$
+    dell@DESKTOP-PM4Q7OS:~$ cd test_server_sec_key/
+
+    dell@DESKTOP-PM4Q7OS:~/test_server_sec_key$ chmod 400 "first_key.pem"
+    dell@DESKTOP-PM4Q7OS:~/test_server_sec_key$ ssh -i "first_key.pem" ubuntu@ec2-54-90-188-48.compute-1.amazonaws.com
+    Welcome to Ubuntu 26.04.1 LTS (GNU/Linux 7.0.0-1006-aws x86_64)
+
+    ubuntu@ip-172-31-29-67:~$ cd var/www/html
+    -bash: cd: var/www/html: No such file or directory
+    ubuntu@ip-172-31-29-67:~$ ls -la
+    total 44
+    drwxr-x--- 7 ubuntu ubuntu 4096 Oct 15 03:16 .
+    drwxr-xr-x 3 root   root   4096 Oct 14 00:43 ..
+    -rw------- 1 ubuntu ubuntu 1739 Oct 15 06:40 .bash_history
+    -rw-r--r-- 1 ubuntu ubuntu  220 Feb 13  2026 .bash_logout
+    -rw-r--r-- 1 ubuntu ubuntu 3968 Oct 14 23:30 .bashrc
+    drwx------ 2 ubuntu ubuntu 4096 Oct 14 03:19 .cache
+    drwx------ 3 ubuntu ubuntu 4096 Oct 15 03:16 .local
+    drwxrwxr-x 4 ubuntu ubuntu 4096 Oct 15 03:05 .npm
+    drwxrwxr-x 8 ubuntu ubuntu 4096 Oct 14 23:33 .nvm
+    -rw-r--r-- 1 ubuntu ubuntu  807 Feb 13  2026 .profile
+    drwx------ 2 ubuntu ubuntu 4096 Oct 14 00:43 .ssh
+    ubuntu@ip-172-31-29-67:~$ pwd
+    /home/ubuntu
+    ubuntu@ip-172-31-29-67:~$ cd ~
+    ubuntu@ip-172-31-29-67:~$ pwd
+    /home/ubuntu
+    ubuntu@ip-172-31-29-67:~$ cd ../
+    ubuntu@ip-172-31-29-67:/home$ ls -la
+    total 12
+    drwxr-xr-x  3 root   root   4096 Oct 14 00:43 .
+    drwxr-xr-x 19 root   root   4096 Oct 15 04:13 ..
+    drwxr-x---  7 ubuntu ubuntu 4096 Oct 15 03:16 ubuntu
+    ubuntu@ip-172-31-29-67:/home$ cd ../
+    ubuntu@ip-172-31-29-67:/$ pwd
+    /
+    ubuntu@ip-172-31-29-67:/$ ls -la
+    total 68
+    ubuntu@ip-172-31-29-67:/$ cd var/www/html
+    ubuntu@ip-172-31-29-67:/var/www/html$
+
+    drwxr-xr-x 7 ubuntu ubuntu 4096 Oct 15 03:26 my-first-aws-app
+    ubuntu@ip-172-31-29-67:/var/www/html$ cd my-first-aws-app/
+    ubuntu@ip-172-31-29-67:/var/www/html/my-first-aws-app$ git branch
+    * master
+    ubuntu@ip-172-31-29-67:/var/www/html/my-first-aws-app$
+
+    ubuntu@ip-172-31-29-67:/var/www/html$ cd my-first-aws-app/
+    ubuntu@ip-172-31-29-67:/var/www/html/my-first-aws-app$ git branch
+    * master
+    ubuntu@ip-172-31-29-67:/var/www/html/my-first-aws-app$ git fetch
+    ubuntu@ip-172-31-29-67:/var/www/html/my-first-aws-app$ git pull
+
+    ubuntu@ip-172-31-29-67:/var/www/html/my-first-aws-app$ npm ci
+
+    added 27 packages, and audited 28 packages in 2s
+
+    9 packages are looking for funding
+    run `npm fund` for details
+
+    found 0 vulnerabilities
+    ubuntu@ip-172-31-29-67:/var/www/html/my-first-aws-app$ npm run build
+
+    > my-first-aws-app@0.0.0 build
+    > tsc -b && vite build
+
+4.now refresh the page changes should be deployed
+
+Automated process
+
+1 aws access details should be given to the git hub actions
+2.visit settings of the git hub repo then 
+  secrets and variables-> Actions
+3. click on New repository scerets button and add secrets as follows
+  EC2_SSH_KEY
+  EC2_HOST - ec2 elastic ip address
+  EC2_USER - ubuntu
+
+
+
+4. create a local folder .github/workflows and create deployment.yml file there.
+ name: Deploy React App to EC2
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy build to EC2
+        run: |
+          rsync -avz dist/ \
+          ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:${{ secrets.EC2_APP_PATH }}

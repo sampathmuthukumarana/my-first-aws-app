@@ -7,6 +7,7 @@ function App() {
   <div>
     <h1>My first AWS app</h1>
     <p>aws git hub action enabled</p>
+    <p>hi</p>
   </div>
   )
 }
